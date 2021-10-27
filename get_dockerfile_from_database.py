@@ -1,5 +1,4 @@
 import re, os, nltk, pymysql
-from dockerfile_parse import DockerfileParser
 
 class Dockerfile_Maneger(object):
     def __init__(self, host, name , num, start = 0, passwd=""):  # localhost, test, 1, 0    211.69.198.51,dockerfile,1,0,passwd = 123456

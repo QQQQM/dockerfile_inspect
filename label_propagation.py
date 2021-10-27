@@ -1,3 +1,6 @@
+from nltk.util import pr
+
+
 def label_propagation(vector_dict, edge_dict):
     '''标签传播
     input:  vector_dict(dict)节点：社区
@@ -15,7 +18,7 @@ def label_propagation(vector_dict, edge_dict):
             for node in vector_dict.keys():
                 adjacency_node_list = edge_dict[node]  # 获取节点node的邻接节点
                 vector_dict[node] = get_max_community_label(vector_dict, adjacency_node_list)
-            print(vector_dict)
+            # print(vector_dict)
         else:
             break
     return vector_dict
@@ -30,7 +33,8 @@ def get_max_community_label(vector_dict, adjacency_node_list):
     for node in adjacency_node_list:
         node_id_weight = node.strip().split(":")
         node_id = node_id_weight[0]  # 邻接节点
-        node_weight = int(node_id_weight[1])  # 与邻接节点之间的权重
+        node_weight = node_id_weight[1]  # 与邻接节点之间的权重
+        # node_weight = int(node_id_weight[1])  # 与邻接节点之间的权重
         if vector_dict[node_id] not in label_dict:
             label_dict[vector_dict[node_id]] = node_weight
         else:
@@ -60,9 +64,10 @@ def loadData(filePath):
     vector_dict = {}
     edge_dict = {}
     for line in f.readlines():
-        lines = line.strip().split("   ")
+        lines = line.strip().split(" ")
         for i in range(2):
             if lines[i] not in vector_dict:
+                # vector_dict[lines[i]] = lines[i]
                 vector_dict[lines[i]] = int(lines[i])
                 edge_list = []
                 if len(lines) == 3:
@@ -79,7 +84,28 @@ def loadData(filePath):
                 edge_dict[lines[i]] = edge_list
     return vector_dict, edge_dict
 
-if __name__ == '__main__':
+def classify(data_save_name):
+    print("正在对节点分类...")
+    label_dict = set([])
+    vector, edge = loadData(data_save_name)
+    print("数据加载完成...")
+    vector_dict = label_propagation(vector, edge)
+    # print(vector_dict)
+    cluster_group = dict()
+    for node in vector_dict.keys():
+        cluster_id = vector_dict[node]
+        print("cluster_id, node", cluster_id, node)
+        if cluster_id not in cluster_group.keys():
+            cluster_group[cluster_id] = [node]
+        else:
+            label_dict.add(cluster_id)
+            cluster_group[cluster_id].append(node)
+    print("分类完成...")
+    return cluster_group, label_dict
+
+
+def main():
+    label_dict = set([])
     filePath = './data/label_data.txt'
     vector, edge = loadData(filePath)
     print(vector)
@@ -93,5 +119,10 @@ if __name__ == '__main__':
         if cluster_id not in cluster_group.keys():
             cluster_group[cluster_id] = [node]
         else:
+            label_dict.add(cluster_id)
             cluster_group[cluster_id].append(node)
     print(cluster_group)
+    print(label_dict)
+
+if __name__ == '__main__':
+    main()
