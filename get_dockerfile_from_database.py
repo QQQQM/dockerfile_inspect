@@ -123,6 +123,18 @@ def deal_dockerfile(content):
     # print("\n\n----", nltk.pos_tag(nltk.word_tokenize(passage))) #对分完词的结果进行词性标注
     return passage
 
+
+def deal_dockerfile_layer(content):
+    passage_dict = []
+    sentence = extract_dockerfile(content)
+    for sen in sentence:
+        if "/usr/sbin/policy-rc.d  && echo 'exit 101'" in sen:
+            continue
+        else:
+            sen = handle_script(sen)
+            passage_dict.append(sen)
+    return passage_dict
+
 def main():
     os.system("clear")
     print("正在以main进程从数据库中获取dockerfile")
