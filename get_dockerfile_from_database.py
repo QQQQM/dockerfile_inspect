@@ -1,17 +1,18 @@
 import re, os, nltk, pymysql
 
 class Dockerfile_Maneger(object):
-    def __init__(self, host, name , num, start = 0, passwd=""):  # localhost, test, 1, 0    211.69.198.51,dockerfile,1,0,passwd = 123456
+    def __init__(self, host, name , num, start = 0, passwd="", table_name = "dockerfile"):  # localhost, test, 1, 0    211.69.198.51,dockerfile,1,0,passwd = 123456
         self.database_name = name
         self.lookup_start = start
         self.lookup_num = num
+        self.table_name = table_name
         self.passwd = passwd
         self.result_list = []
         self.conn = pymysql.connect(host = host, port = 3306, user = "root", passwd = passwd, db = self.database_name)
         self.cur = self.conn.cursor()
     
     def lookup(self):
-        sql = "select * from dockerfile limit " + str(self.lookup_start) + "," + str(self.lookup_num) + ";"
+        sql = "select * from " + self.table_name + " limit " + str(self.lookup_start) + "," + str(self.lookup_num) + ";"
         cnt = self.cur.execute(sql)
         print("共查询", cnt, "条记录")
         for i in range(cnt):
@@ -35,7 +36,9 @@ class Dockerfile_Maneger(object):
 
 # 预处理脚本内容，去除语法解析器无法解析的内容
 def handle_script(content):
-    # 去开头的bash -c 
+    # 去开头的bash -c     
+    content = re.sub(r':*[a-z0-9]{64}', '', content)
+    content = re.sub(r'[A-Z0-9]{40}', '', content)
     content = re.sub(r'^/bin/sh -c set', '', content)
     content = re.sub(r'^/bin/(ba)*?sh(\s)*(-+\S+\s+)*', '', content)
     content = re.sub(r'#\(nop\)', '', content)
@@ -125,14 +128,21 @@ def deal_dockerfile(content):
 
 
 def deal_dockerfile_layer(content):
+    passage = ""
     passage_dict = []
     sentence = extract_dockerfile(content)
     for sen in sentence:
+        # print("处理前：", sen)
         if "/usr/sbin/policy-rc.d  && echo 'exit 101'" in sen:
             continue
         else:
+            if re.match(r"CMD", sen.lstrip()) != None:
+                if passage.lstrip()!= "" :  passage_dict.append(passage)
+                passage = ""
+                continue
             sen = handle_script(sen)
-            passage_dict.append(sen)
+            passage += sen + " "
+    if passage.lstrip()!= "" : passage_dict.append(passage)
     return passage_dict
 
 def main():
