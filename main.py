@@ -1,5 +1,6 @@
 import re, os, json, codecs, doc2vec
 from nltk.util import pr
+from form_ast import deal_shell
 import get_dockerfile_from_database
 import label_propagation
 
@@ -18,7 +19,7 @@ def get_dict(passage_dict, title_dict, table_name, num, flag = 0):
         passage_dict.append(passage)
 
 def get_dict_layer(passage_dict, title_dict, table_name, num, flag = 0):
-    dockerfile_maneger = get_dockerfile_from_database.Dockerfile_Maneger("localhost", "test", num, 2, passwd = "123456", table_name = table_name ) # ("211.69.198.51", "dockerfile", 1, 0) 
+    dockerfile_maneger = get_dockerfile_from_database.Dockerfile_Maneger("localhost", "test", num, 0, passwd = "123456", table_name = table_name ) # ("211.69.198.51", "dockerfile", 1, 0) 
     dockerfile_list = dockerfile_maneger.lookup()
     for i in range(len(dockerfile_list)):
         image_id = dockerfile_list[i][0].replace("+","/")
@@ -28,6 +29,21 @@ def get_dict_layer(passage_dict, title_dict, table_name, num, flag = 0):
         for cnt, each_passage in enumerate(passage):
             title_dict.append("baaaaaaad--" + image_id + "--" + str(cnt)) if flag == 1 else title_dict.append(image_id + "--" + str(cnt))
         passage_dict += passage
+        
+def get_dict_ast(passage_dict, title_dict, table_name, num, flag = 0):
+    ast_dict = []
+    dockerfile_maneger = get_dockerfile_from_database.Dockerfile_Maneger("localhost", "test", num, 0, passwd = "123456", table_name = table_name ) # ("211.69.198.51", "dockerfile", 1, 0) 
+    dockerfile_list = dockerfile_maneger.lookup()
+    for i in range(len(dockerfile_list)):
+        image_id = dockerfile_list[i][0].replace("+","/")
+        content = dockerfile_list[i][1]
+        print("\n", i, "---", image_id)        
+        passage, ast_dict_tem = get_dockerfile_from_database.deal_dockerfile_ast(content)
+        for cnt, each_passage in enumerate(passage):
+            title_dict.append("baaaaaaad--" + image_id + "--" + str(cnt)) if flag == 1 else title_dict.append(image_id + "--" + str(cnt))
+        passage_dict += passage
+        ast_dict += ast_dict_tem
+    return ast_dict
 
 def save_classify(data_save_path, cluster_group, label_dict, title_dict, passage_dict):
     print(cluster_group)
@@ -44,12 +60,12 @@ def save_classify(data_save_path, cluster_group, label_dict, title_dict, passage
             f.writelines(passage_dict[int(passage_index)] + "\n\n")
         f.close()
 
-
-def main():
+# 先获取dockerfile文件信息，然后根据doc2vec训练模型，将相似度的数据表带入label propagation之后进行分类
+def train_model_and_label_propagation():
     os.system("clear")
     layer = True
     Bad_image = True
-    layer_add = "layer-" if layer == True else ""
+    
 
     num = 5000
     bad_num = 600
@@ -71,7 +87,8 @@ def main():
         get_dict_layer(passage_dict, title_dict, "dockerfile", num)                         # 方式二：以 dockerfile 的 layer 为节点
     print(len(title_dict))
     print(len(passage_dict))
-
+    
+    layer_add = "layer-" if layer == True else ""
     data_save_path = "./" + layer_add + "data-" + str(num) + "(" + str(bad_dict_num) + ")/"
     if not os.path.exists(data_save_path):  os.makedirs(data_save_path)
     model_save_name = data_save_path + "model-" + str(num)
@@ -88,10 +105,33 @@ def main():
 
     # 将模型保存为节点数据
     doc2vec.save_node(model_read_name, data_save_name, passage_dict)
-    # # 通过label propagation算法获得节点分类
-    # cluster_group, label_dict = label_propagation.classify(data_save_name)
-    # # 保存分类数据，方便比较
-    # save_classify(data_save_path, cluster_group, label_dict, title_dict, passage_dict)
+    # 通过label propagation算法获得节点分类
+    cluster_group, label_dict = label_propagation.classify(data_save_name)
+    # 保存分类数据，方便比较
+    save_classify(data_save_path, cluster_group, label_dict, title_dict, passage_dict)
+    
+def form_ast():
+    os.system("clear")
+    print("hello")
+    num = 3
+    title_dict = []
+    json_dict = []
+    passage_dict = []
+    ast_dict = get_dict_ast(passage_dict, title_dict, "dockerfile", num)                       # 方式二：以 dockerfile 的 layer 为节点
+    # print(passage_dict)
+    # for cnt, content in enumerate(passage_dict):
+    #     json_dict.append(title_dict[cnt])
+    #     json_dict.append(content)
+    #     json_dict += deal_shell.outer_test(content, title_dict[cnt])
+    f_json = open("./dockerfile.json","w")
+    json.dump(ast_dict, f_json, sort_keys=True, indent=4)
+    f_json.close()
+
+def main():
+    # train_model_and_label_propagation()
+    form_ast()
+    # deal_shell.main()
+    
 
 if __name__ == "__main__":
     main()
